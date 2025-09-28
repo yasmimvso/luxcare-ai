@@ -8,43 +8,31 @@ import os
 
 load_dotenv()
 
-
 class State(TypedDict):
     messages: Annotated[list, add_messages]
     message_type: str | None 
 
-
 class ChatbotAgent:
-
     def __init__(self):
 
-        self.llm = init_chat_model(
+        self.llm = init_chat_model( 
             "gemini-flash-latest",          
             model_provider="google_genai",
             google_api_key=os.environ.get("GEMINI_API_KEY")
         )
-
-        self.conversation_history = {}
-
+        self.conversation_history = {}  
+        
         graph_builder = StateGraph(State)
-
-        graph_builder.add_node("chatbot", self.chatbot_conf)
-        graph_builder.add_node("save_to_firebase", self.save_node)
-
+        graph_builder.add_node("chatbot", self.chatbot_node)
         graph_builder.add_edge(START, "chatbot")
-        graph_builder.add_edge("chatbot", "save_to_firebase")
-        graph_builder.add_edge("save_to_firebase", END)
-
+        graph_builder.add_edge("chatbot", END)
         self.graph = graph_builder.compile()
     
-    def chatbot_conf(self, state: State):
-        last_message = state["messages"][-1]  
-
-        messages = [
-            {
-                "role": "system",
-                "content": """
-                Você é um assistente virtual acolhedor e empático, cujo objetivo é coletar informações de triagem de saúde de forma clara, calma, profissional e humanizada.
+    def chatbot_node(self, state: State):
+     
+        prompt = {
+            "role": "system", 
+            "content":  """Você é um assistente virtual acolhedor e empático, cujo objetivo é coletar informações de triagem de saúde de forma clara, calma, profissional e humanizada.
 
                 Comportamento e Tom:
                 - Seja acolhedor, empático, paciente e calmo.
@@ -93,31 +81,50 @@ class ChatbotAgent:
                 - Conduzir a conversa de forma natural, garantindo que todas as informações necessárias sejam coletadas.
                 - No fim, confirme com o usuário se o resumo da triagem está correto antes de encerrar.
                 """
-            }
-        ] + state["messages"]  
+        }
+        
+        messages = [prompt] + state["messages"]
+        
+        reply = self.llm.invoke(messages)
+        
+        return {"messages": state["messages"] + [{"role": "assistant", "content": reply.content}]}
+   
+    def invoke_end(self, history: list):  
+        
+        prompt = {
+            "role": "system",
+            "content": """
+            Gere um resumo estruturado da triagem médica com base no histórico da conversa.
+            
+            O resumo deve conter as seguintes informações de forma clara e organizada:
+            
+            - **Queixa Principal**: Qual a queixa inicial do paciente
+            - **Sintomas Detalhados**: Descrição dos sintomas relatados
+            - **Duração e Frequência**: Há quanto tempo e com que frequência
+            - **Intensidade**: Nível de intensidade (escala 0 a 10) se mencionado
+            - **Histórico Relevante**: Condições pré-existentes ou histórico médico
+            - **Medidas Tomadas**: O que o paciente já tentou para aliviar os sintomas
+            
+            Seja conciso, objetivo e utilize tópicos para melhor organização.
 
+            Caso tenha sido sido caso de urgẽncia, informar apenas os sintomas da urgência identificada.
+            """
+        }
+
+        messages = [prompt] + history 
         reply = self.llm.invoke(messages)
 
-        return {"messages": state["messages"] + [{"role": "assistant", "content": reply.content}]}
-
-    def save_node(self, state: State):
-        """Aqui você pode salvar no Firebase (ainda vamos plugar no main)"""
-        # Aqui ainda não temos o firestore, mas você pode retornar o state normal
-        return state
-   
-    def invoke(self, message: str, user_id: str = "default"):
-
+        return reply  
+    
+    def get_or_create_history(self, user_id: str):
+    
         if user_id not in self.conversation_history:
             self.conversation_history[user_id] = []
-        
+        return self.conversation_history[user_id]
     
-        self.conversation_history[user_id].append({"role": "user", "content": message})
-        
-        state = {"messages": self.conversation_history[user_id], "user_id": user_id}
-        result = self.graph.invoke(state)
-        
-        new_assistant_msg = result["messages"][-1]  
-        self.conversation_history[user_id].append(new_assistant_msg)
-        
-        return new_assistant_msg["content"]
-
+    def add_to_history(self, user_id: str, role: str, content: str):
+        self.conversation_history[user_id].append({"role": role, "content": content})
+    
+    def clear_history(self, user_id: str):
+        if user_id in self.conversation_history:
+            del self.conversation_history[user_id]
