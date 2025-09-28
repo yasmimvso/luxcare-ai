@@ -8,7 +8,7 @@ from agents.agent import ChatbotAgent
 import uuid
 from datetime import datetime
 
-cred = credentials.Certificate("config/luxcare-ai-firebase.json")
+cred = credentials.Certificate("FIREBASE_CREDENTIALS")
 firebase_admin.initialize_app(cred)
 
 db = firestore.client()
