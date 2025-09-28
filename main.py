@@ -5,11 +5,20 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from agents.agent import ChatbotAgent
-import uuid
 from datetime import datetime
+import json
+import os
+import uuid
 
-cred = credentials.Certificate("FIREBASE_CREDENTIALS")
-firebase_admin.initialize_app(cred)
+firebase_credentials = os.getenv("FIREBASE_CREDENTIALS")
+
+if not firebase_admin._apps:
+    if firebase_credentials:
+        cred_dict = json.loads(firebase_credentials)  # adapt arpara Render
+        cred = credentials.Certificate(cred_dict)
+        firebase_admin.initialize_app(cred)
+    else:
+        raise ValueError("FIREBASE_CREDENTIALS não configurado")
 
 db = firestore.client()
 
