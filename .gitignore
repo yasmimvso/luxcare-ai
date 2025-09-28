@@ -1,0 +1,17 @@
+# Python cache
+__pycache__/
+agents/__pycache__/
+
+# Environment
+.env
+.venv
+.python-version
+
+# Node
+node_modules/
+
+# Config
+config/
+
+# UV package manager
+uv.lock
