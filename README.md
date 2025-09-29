@@ -41,3 +41,5 @@ O LuxCare AI é um assistente virtual médico avançado que utiliza inteligênci
 ### Integrado com a Lovale ( sistema gerado por vibe coding )
 <img width="1810" height="887" alt="image" src="https://github.com/user-attachments/assets/8b567ef2-cac3-4c21-874e-8f95a1c00636" />
 
+Observação: A utilização da versão grátis do Render.com, limita o tempo de ociosidade de vida do servidor. Há possibilidade de não conseguir utilizar o sistema dado a limitação de deploy do backend da aplicação.
+
